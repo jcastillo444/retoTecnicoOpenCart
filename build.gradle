@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'eclipse'
+    id 'net.serenity-bdd.serenity-gradle-plugin' version '4.3.2'
+}
+
+defaultTasks 'clean', 'test', 'aggregate'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+ext {
+    serenityVersion = '4.3.2'
+    cucumberVersion = '7.31.0'
+    junitVersion = '5.13.0'
+    logbackVersion = '1.5.18'
+}
+
+dependencies {
+    testImplementation platform("io.cucumber:cucumber-bom:${cucumberVersion}")
+    testImplementation platform("org.junit:junit-bom:${junitVersion}")
+
+    testImplementation "net.serenity-bdd:serenity-core:${serenityVersion}"
+    testImplementation "net.serenity-bdd:serenity-cucumber:${serenityVersion}"
+    testImplementation "net.serenity-bdd:serenity-screenplay:${serenityVersion}"
+    testImplementation "net.serenity-bdd:serenity-screenplay-webdriver:${serenityVersion}"
+
+    testImplementation 'io.cucumber:cucumber-junit-platform-engine'
+    testImplementation 'org.junit.platform:junit-platform-suite'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperties System.getProperties().findAll { key, value ->
+        key.toString().startsWith('serenity') || key.toString().startsWith('webdriver') ||
+                key.toString().startsWith('cucumber') || key.toString().startsWith('headless') ||
+                key.toString() == 'environment'
+    }
+    systemProperty 'file.encoding', 'UTF-8'
+    testLogging {
+        showStandardStreams = true
+        events 'passed', 'failed', 'skipped'
+        exceptionFormat = 'full'
+    }
+}
+
+gradle.startParameter.continueOnFailure = true
+
+test.finalizedBy(aggregate)
+aggregate.finalizedBy(checkOutcomes)
